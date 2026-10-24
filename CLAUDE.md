@@ -211,6 +211,25 @@ Before merging a Dependabot PR, confirm CI passes. If a bump fails due to an inc
 
 **Secrets-dependent steps fail on Dependabot PRs by default.** GitHub withholds repository secrets from workflows triggered by Dependabot's `pull_request` event (a supply-chain safeguard, so a malicious dependency bump can't exfiltrate them). Any CI step that needs a secret — a registry login for an image CVE scan, a paid API key, a deploy credential — will fail on every Dependabot PR with an auth error, regardless of the bump's content. Guard those specific steps with `if: github.actor != 'dependabot[bot]'` rather than gating the whole job; keep the secret-free parts (e.g. `docker build` itself) running so the bump still gets real validation.
 
+### Handling Dependabot alerts
+
+GitHub's weekly Dependabot email lists every alert that is still **open**, and repeats until each alert is closed or dismissed. The goal is that most alerts close themselves; the rest are handled in one batch per repo, not one at a time.
+
+**Automate the common case (patch/minor upgrades):**
+1. **Turn on "Grouped security updates"** (repo Settings → Advanced Security). Dependabot then opens one security PR per ecosystem across all directories, so one CI run covers the batch. It is a repo setting, not a `dependabot.yml` key.
+2. **Group patch/minor version updates per directory** in `dependabot.yml` (`groups: <name>: {update-types: ["minor", "patch"], patterns: ["*"]}`). Leave majors ungrouped: auto-approve only covers patch/minor, so a major inside a group blocks the whole group.
+3. **Run the Option B pipeline above end to end:** approve → SBOM refresh → CI on the PR → merge on success. **CI must run on Dependabot PRs**, or the merge never fires. To keep CI manual for human PRs, add the `pull_request` trigger and gate every job on `github.event_name != 'pull_request' || startsWith(github.head_ref, 'dependabot/')`. A human PR's run is then all-skipped and costs no minutes. Reference: specie77/trading-system#645.
+
+**Handle the rest by hand, in one batch per repo.** For each remaining alert, ask whether the manifest is still in use:
+
+| Answer | Action |
+|---|---|
+| Yes, and an upgrade is possible (major bump, or a PR whose CI failed) | **Upgrade in one consolidated PR**: `pip-compile --generate-hashes --upgrade-package <pkg> …` across every affected lockfile, regenerate SBOMs with `tools/check_sbom.py --fix`, run `pip-audit` on every lockfile plus tests, merge, then close the superseded Dependabot PRs. GitHub closes the alerts when it rescans. |
+| No: the component is retired | **Remove its manifests** (see "Retiring an agent"). Its alerts close and stop recurring. |
+| Yes, but no fix is possible (no patched version, or an unresolvable conflict) | **Dismiss with a reason** ("tolerable risk" or "fix started") and open an issue to revisit. |
+
+An upgraded alert counts as resolved only once the fixed version is **deployed**: a merge to `main` doesn't rebuild or redeploy images on its own in a dispatch-only CI setup. The monthly `--upgrade` recompile (see `docs/supply-chain.md`) clears many vulnerable versions before they become alerts.
+
 ## GitHub Actions Pinning
 
 Pin every third-party action to a full commit SHA, not a floating tag. Add the version as a comment:
