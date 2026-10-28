@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Assert the named packages were installed from a LOCAL PATH, not an index.
 
-Why this exists (#345).
+Why this exists.
 
-`meal-planner-core` and `meal-planner-mcp` are not registered on PyPI — checked
-2026-08-22, both 404 — so the names are claimable by anyone. That is the
-dependency-confusion risk `.standards/docs/supply-chain.md` names under "New
-dependency review".
+A project's internal packages (e.g. `my-core`, `my-app`) are often not
+registered on PyPI — `https://pypi.org/pypi/<name>/json` returns 404 — so the
+names are claimable by anyone. That is the dependency-confusion risk
+`.standards/docs/supply-chain.md` names under "New dependency review".
 
-Nothing is exposed today, because every install site reaches these packages by
-local path with `--no-deps`, and the lockfiles around them are hash-locked. Two
-independent mechanisms, both currently correct.
+Usually nothing is exposed, because every install site reaches these packages
+by local path with `--no-deps`, and the lockfiles around them are hash-locked.
+Two independent mechanisms, both correct when set up.
 
 The problem is that the protection lives entirely in flags on install commands.
 Drop `--no-deps` from one line — while tidying, while debugging, while adding a
@@ -35,8 +35,8 @@ the opposite — this asserts provenance rather than inferring it from the
 command line, which is what makes it worth having.
 
 Usage:
-    python tools/check_local_install.py meal-planner-core
-    python tools/check_local_install.py meal-planner-core meal-planner-mcp
+    python tools/check_local_install.py my-core
+    python tools/check_local_install.py my-core my-app
 """
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ def main(argv: list[str]) -> int:
             "\nERROR: a package that must come from this repo did not.\n\n"
             + "\n".join(f"  - {f}" for f in failures)
             + "\n\nThese names are UNREGISTERED on PyPI and claimable by anyone "
-            "(#345), so an\ninstall that reaches an index is a supply-chain "
+            "so an\ninstall that reaches an index is a supply-chain "
             "exposure, not a packaging\ndetail. Check that the install command "
             "still uses a local path with --no-deps;\nthose flags are "
             "load-bearing, not incidental.",
