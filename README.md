@@ -7,7 +7,7 @@ Shared development standards for all projects. Contains a single `CLAUDE.md` wit
 Add this repo as a submodule at `.standards/` in any project:
 
 ```bash
-git submodule add https://github.com/specie77/standards.git .standards
+git submodule add https://github.com/DanMarcu18/standards.git .standards
 ```
 
 Then import it at the top of the project's `CLAUDE.md`:
