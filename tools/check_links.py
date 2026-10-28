@@ -1,10 +1,10 @@
 """CI check: verify intra-repo markdown links and heading anchors resolve.
 
 This repo is vendored as a `.standards` submodule and its docs are consumed
-by cross-reference: CLAUDE.md cites sections of docs/security-protocols.md,
-and the subagent prompts tell agents to read specific paths. Rename a file or
-renumber a heading and every pointer dies silently — no error is raised
-anywhere, in this repo or in the projects that follow the pointer.
+by cross-reference: CLAUDE.md cites sections of docs/security-protocols.md
+and docs/supply-chain.md. Rename a file or renumber a heading and every
+pointer dies silently — no error is raised anywhere, in this repo or in the
+projects that follow the pointer.
 
 Checks relative markdown links (`[text](path)`), optionally with an `#anchor`,
 and bare in-page anchors. External URLs are not fetched: this must stay
