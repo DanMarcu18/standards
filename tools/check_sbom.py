@@ -1,6 +1,6 @@
 """CI check: fail if a package's SBOM is out of date with its lockfile.
 
-Canonical shared implementation (specie77/standards). Projects vendor this
+Canonical shared implementation (DanMarcu18/standards). Projects vendor this
 repo as a `.standards` git submodule and invoke this script directly rather
 than copy-pasting it — bumping the submodule pointer updates the logic
 everywhere at once.
@@ -17,7 +17,7 @@ non-determinism:
    themselves pinned in the lockfile. Because the base image's bundled
    versions drift over time independent of any real dependency change, this
    would otherwise fail the freshness check with zero actual drift in the
-   project's own dependencies (specie77/standards#3). Fixed by restricting
+   project's own dependencies (DanMarcu18/standards#3). Fixed by restricting
    both the generated and committed SBOMs to components whose *name* (not
    version — a real version mismatch on an already-pinned package should
    still fail the check) appears as an explicit `==` pin somewhere in the
@@ -135,7 +135,7 @@ def main() -> int:
     # one. Without this, a resolution artifact already baked into the
     # committed SBOM (a base image's bundled setuptools, say) is compared
     # against a generated SBOM that excludes it, failing the check with zero
-    # real dependency drift — the specie77/standards#3 failure mode, from
+    # real dependency drift — the DanMarcu18/standards#3 failure mode, from
     # the other direction.
     committed = _normalize(_filter_to_pinned(committed_doc, pinned_names))
 

@@ -94,7 +94,7 @@ def test_pinned_names_ignores_unpinned_and_noise(tmp_path):
 
 
 # --------------------------------------------------------------------------
-# _filter_to_pinned — drop resolution artifacts (specie77/standards#3)
+# _filter_to_pinned — drop resolution artifacts (DanMarcu18/standards#3)
 # --------------------------------------------------------------------------
 
 
@@ -245,7 +245,7 @@ def test_fix_output_passes_a_subsequent_check(project):
 
 
 def test_committed_sbom_with_unpinned_build_tool_does_not_fail(project):
-    """specie77/standards#3, from the committed side.
+    """DanMarcu18/standards#3, from the committed side.
 
     A base image's bundled setuptools can land in the committed SBOM. It is
     not `==`-pinned in the lockfile, so it is a resolution artifact and must

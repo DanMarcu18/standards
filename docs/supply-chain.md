@@ -115,7 +115,7 @@ established one and does not address the index-reachability problem either.
     over time independent of the project's actual dependencies, which would
     otherwise fail the freshness check with zero real drift (observed:
     `python:3.11-slim`'s bundled `setuptools` moved between two runs with no
-    lockfile change — specie77/standards#3). Fixed by restricting the
+    lockfile change — DanMarcu18/standards#3). Fixed by restricting the
     comparison to components whose *name* (not version — a genuine version
     mismatch on an already-pinned package must still fail) appears as an
     explicit `==` pin somewhere in the lockfile.
@@ -219,7 +219,7 @@ one of two ways:
     durable cross-workflow signal — it survives the refresh bot's push wherever no
     "dismiss stale approvals" branch-protection rule strips it (which is exactly
     the Free-plan case where you'd use this pattern). Reference implementation:
-    specie77/trading-system `.github/workflows/dependabot-approve.yml` +
+    DanMarcu18/trading-system `.github/workflows/dependabot-approve.yml` +
     `dependabot-merge.yml` (use a revision from #621 onward). The approve job
     checks out the repo, so its `permissions:` block must list `contents: read`
     next to `pull-requests: write`. Without it, checkout fails on a private repo
