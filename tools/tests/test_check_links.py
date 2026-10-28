@@ -2,10 +2,9 @@
 
 The docs in this repo are consumed by cross-reference from every project that
 vendors it as a .standards submodule: CLAUDE.md cites sections of
-security-protocols.md, and the subagent prompts tell subagents to read specific
-paths. A renamed file or a renumbered heading breaks those pointers silently —
-no error is raised here or in the projects that follow them — which is what
-this check exists to make loud.
+security-protocols.md and supply-chain.md. A renamed file or a renumbered
+heading breaks those pointers silently — no error is raised here or in the
+projects that follow them — which is what this check exists to make loud.
 
 So the tests assert each rule *fires* on a broken link, not merely that a good
 document passes. They also pin the two behaviours that are deliberate limits
@@ -148,8 +147,7 @@ def test_headings_inside_code_fences_are_not_anchors():
 def test_links_inside_code_fences_are_not_checked(tmp_path):
     """Deliberate: fenced blocks hold illustrative paths that do not exist
     here. It is also a real blind spot — an install command inside a fence can
-    point at a path that does not exist, and this will not catch it (the
-    `.standards/agents` bug in the subagent review was exactly that). Pinned as
+    point at a path that does not exist, and this will not catch it. Pinned as
     a test so the limit is a known one rather than a surprise."""
     source = write(
         tmp_path,
