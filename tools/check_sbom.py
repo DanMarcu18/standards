@@ -40,7 +40,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-VOLATILE_KEYS = ("metadata", "serialNumber")
+# "vulnerabilities" is pip-audit's live advisory feed, not inventory: it changes
+# whenever an advisory is published against an already-pinned package, with no
+# lockfile change at all. Comparing it made one new CVE fail every freshness
+# check until the SBOM was regenerated (and again once the CVE was fixed).
+VOLATILE_KEYS = ("metadata", "serialNumber", "vulnerabilities")
 
 # PEP 503: package names are compared case-insensitively with runs of
 # -_. treated as equivalent.
@@ -107,14 +111,24 @@ def main() -> int:
     parser.add_argument("--fix", action="store_true")
     args = parser.parse_args()
 
-    result = subprocess.run(
-        [sys.executable, "-m", "pip_audit", "-r", str(args.requirements), "--format=cyclonedx-json"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+    cmd = [sys.executable, "-m", "pip_audit", "-r", str(args.requirements), "--format=cyclonedx-json"]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    # pip-audit exits 1 when it finds a known vulnerability — even in SBOM mode,
+    # where it still writes a complete SBOM to stdout. That is the CVE scan's
+    # job to fail on, not this freshness check's: treating it as a crash made
+    # every SBOM check/regeneration fail whenever *any* pinned package had an
+    # advisory, which stalled automated Dependabot SBOM refreshes. Accept exit 1
+    # when stdout is a valid SBOM; any other failure is still an error.
+    try:
+        audit_doc = json.loads(result.stdout) if result.returncode in (0, 1) else None
+    except json.JSONDecodeError:
+        audit_doc = None
+    if not isinstance(audit_doc, dict):
+        raise subprocess.CalledProcessError(result.returncode, cmd, result.stdout, result.stderr)
+    # Keep the committed SBOM a pure inventory (see VOLATILE_KEYS).
+    audit_doc.pop("vulnerabilities", None)
     pinned_names = _pinned_names(args.requirements)
-    raw_generated = _filter_to_pinned(json.loads(result.stdout), pinned_names)
+    raw_generated = _filter_to_pinned(audit_doc, pinned_names)
     generated = _normalize(raw_generated)
 
     try:

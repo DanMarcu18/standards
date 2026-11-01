@@ -184,6 +184,8 @@ def project(tmp_path, monkeypatch):
             self.sbom_path = tmp_path / "sbom.json"
             self.requirements.write_text("flask==3.0.0\n")
             self.generated = sbom([component("flask", "3.0.0", ref="fresh-random")])
+            self.returncode = 0
+            self.stdout = None  # None = json.dumps(self.generated)
 
         def commit(self, doc):
             self.sbom_path.write_text(json.dumps(doc, indent=2) + "\n")
@@ -193,7 +195,10 @@ def project(tmp_path, monkeypatch):
                 check_sbom.subprocess,
                 "run",
                 lambda *a, **k: subprocess.CompletedProcess(
-                    a[0], 0, stdout=json.dumps(self.generated), stderr=""
+                    a[0],
+                    self.returncode,
+                    stdout=json.dumps(self.generated) if self.stdout is None else self.stdout,
+                    stderr="",
                 ),
             )
             monkeypatch.setattr(
@@ -216,6 +221,67 @@ def test_main_passes_when_sbom_matches(project, capsys):
     project.commit(sbom([component("flask", "3.0.0", ref="committed-random")]))
     assert project.run() == 0
     assert "up to date" in capsys.readouterr().out
+
+
+def test_vulnerability_exit_code_does_not_fail_the_freshness_check(project, capsys):
+    """pip-audit exits 1 when it finds a CVE but still emits a full SBOM;
+    freshness must be judged on the SBOM, leaving CVEs to the audit step."""
+    project.returncode = 1
+    project.commit(sbom([component("flask", "3.0.0", ref="committed-random")]))
+    assert project.run() == 0
+    assert "up to date" in capsys.readouterr().out
+
+
+def test_fix_still_works_when_pip_audit_reports_a_vulnerability(project):
+    project.returncode = 1
+    assert project.run("--fix") == 0
+    assert json.loads(project.sbom_path.read_text())["components"][0]["name"] == "flask"
+
+
+def test_new_advisory_on_unchanged_lockfile_is_not_drift(project, capsys):
+    """A CVE published against an already-pinned package adds a
+    `vulnerabilities` section to pip-audit's SBOM. That is advisory data, not
+    inventory, so an unchanged lockfile must still read as up to date."""
+    project.returncode = 1
+    project.generated = {
+        **project.generated,
+        "vulnerabilities": [{"id": "CVE-2026-0001", "affects": [{"ref": "fresh-random"}]}],
+    }
+    project.commit(sbom([component("flask", "3.0.0", ref="committed-random")]))
+    assert project.run() == 0
+    assert "up to date" in capsys.readouterr().out
+
+
+def test_fix_writes_inventory_without_vulnerabilities(project):
+    project.returncode = 1
+    project.generated = {
+        **project.generated,
+        "vulnerabilities": [{"id": "CVE-2026-0001", "affects": [{"ref": "fresh-random"}]}],
+    }
+    assert project.run("--fix") == 0
+    assert "vulnerabilities" not in json.loads(project.sbom_path.read_text())
+
+
+def test_committed_sbom_containing_vulnerabilities_still_matches(project, capsys):
+    committed = sbom([component("flask", "3.0.0", ref="committed-random")])
+    committed["vulnerabilities"] = [{"id": "CVE-2026-0001"}]
+    project.commit(committed)
+    assert project.run() == 0
+    assert "up to date" in capsys.readouterr().out
+
+
+def test_real_pip_audit_failure_still_raises(project):
+    """Exit 1 without a parsable SBOM (pip-audit itself broke) is an error."""
+    project.returncode = 1
+    project.stdout = "ERROR: could not resolve requirements"
+    with pytest.raises(subprocess.CalledProcessError):
+        project.run()
+
+
+def test_unexpected_exit_code_still_raises(project):
+    project.returncode = 2
+    with pytest.raises(subprocess.CalledProcessError):
+        project.run()
 
 
 def test_main_fails_when_a_version_drifted(project, capsys):
