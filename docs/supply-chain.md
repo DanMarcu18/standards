@@ -119,6 +119,15 @@ established one and does not address the index-reachability problem either.
     comparison to components whose *name* (not version — a genuine version
     mismatch on an already-pinned package must still fail) appears as an
     explicit `==` pin somewhere in the lockfile.
+  - **A known vulnerability is not SBOM drift.** `pip-audit` exits 1 when it
+    finds a CVE, even in SBOM mode, and adds a `vulnerabilities` section to
+    the document. Both change the day an advisory is published, with no
+    lockfile change. Treating them as drift made one new CVE fail every
+    freshness check and every automated SBOM refresh, stalling all Dependabot
+    PRs until it was fixed by hand (observed in DanMarcu18/trading-system,
+    2026-10). The tool accepts exit 1 when the output is a valid SBOM, ignores
+    `vulnerabilities` when comparing, and never writes it. Failing on CVEs is
+    the `pip-audit` step's job.
 
 ## Shared tooling scripts
 
